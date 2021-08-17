@@ -1,17 +1,17 @@
 # JSONParser
 C++ JSON Parser
 
-About
+# About
 This is a JSON Parser built purely in c++ with its own lexer and parser
 
-Installation
+# Installation
 
 Fetch repository: <br>
 `git clone https://github.com/uncreativekar/JSONParser.git`<br>
 Compile project: <br>
 `make`<br>
 
-Usage
+# Usage
 
 ```c++
 #include "json.hpp"
@@ -34,6 +34,6 @@ int main()
 
 
 
-Notes
+# Notes
 
 This JSON parser does not support escape characters or unicode yet
