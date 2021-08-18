@@ -48,10 +48,16 @@ Object Parser::ParseValue(Token& token, unsigned& index)
                 break;
             case TokenType::_NULL:
                 return Object();
-            case TokenType::TRUE:
-                return Object(true);
-            case TokenType::FALSE:
-                return Object(false);
+            case TokenType::TRUE: {
+                Object obj(true);
+                obj.m_type = Object::Type::BOOL;
+                return obj;
+            }
+            case TokenType::FALSE: {
+                Object obj(false);
+                obj.m_type = Object::Type::BOOL;
+                return obj;
+            }
             default:
                 throw std::runtime_error("[Parser::ParseArray]: unknown value passed");
             }
