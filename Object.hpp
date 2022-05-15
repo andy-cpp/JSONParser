@@ -110,7 +110,6 @@ public:
         m_buffer = new dictionary_t(obj);
     }
 
-    template <bool>
     Object(bool const& value)
     {
         Init<bool>();
