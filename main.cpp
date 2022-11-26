@@ -1,15 +1,17 @@
 #include <iostream>
 #include <assert.h>
-
+#include <string>
 
 #include "json.hpp"
-
+#include "parser.hpp"
 
 int main()
 {
-    auto obj = JSON::LoadFromFile("data.json");
-    
-    obj.Set("data", 100);
-    
-    std::cout << JSON::ToString(obj) << "\n";
+	try {
+		std::cout << JSON::LoadFromFile("data.json").Dump() << "\n";
+		
+	}
+	catch (std::exception& e) {
+		std::cout << e.what() << "\n";
+	}
 }

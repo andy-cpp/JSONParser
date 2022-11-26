@@ -1,246 +1,212 @@
 #include "parser.hpp"
 #include <stdexcept>
-#include <assert.h>
-
-#define EXPECT_EQ(type_, offset) (tokens[index + offset].type == type_)
-
-
-void Parser::ReadAttribute(unsigned& index)
+Parser::Parser(char const* src)
 {
-    std::string key = tokens[index].value;
-    if(!EXPECT_EQ(TokenType::COLON, 1)) printf("isnt colon :(\n");
-    std::string value = tokens[index + 2].value;
-    printf("\"%s\": \"%s\"\n", key.c_str(), value.c_str());
-
-    index += 3;
+	context.src = src;
+	context.length = strlen(src);
+	context.index = 0;
 }
 
-inline bool IsValueType(TokenType type)
+Object ParseValue(ParserContext& ctx);
+
+void CheckWhitespace(ParserContext& ctx)
 {
-    return (type == TokenType::STRING || type == TokenType::NUMBER || type == TokenType::SQUARE_OPEN || type == TokenType::BRACKET_OPEN || type == TokenType::_NULL || type == TokenType::FALSE || type == TokenType::TRUE);
+	for (unsigned i = ctx.index; i < ctx.length; ++i)
+	{
+		if (!isblank(ctx.src[i]) && !isspace(ctx.src[i])) {
+			throw std::runtime_error("[Parser::Parse]: extra data found");
+		}
+	}
 }
-
-bool LastTokenIsType(Token* LastToken, TokenType type)
-{
-    return (LastToken) ? LastToken->type == type : false;
-}
-
-Object Parser::ParseValue(Token& token, unsigned& index)
-{
-
-    //printf("Parsing type: %s\ttoken.offset: %d\n", TokenStrings[(int)token.type].c_str(), token.offset);
-    if(!IsValueType(token.type))
-        throw std::runtime_error(std::string("[Parser::ParseValue]: expected value, got ") + TokenStrings[(int)token.type]);
-            switch(token.type)
-            {
-            case TokenType::STRING:
-                //printf("returning %s\n", token.value.c_str());
-                return token.value;
-                break;
-            case TokenType::NUMBER:
-                return Object(std::stold(token.value));
-                break;
-            case TokenType::BRACKET_OPEN:
-                return ParseObject(index);
-                break;
-            case TokenType::SQUARE_OPEN:
-                return ParseArray(index);
-                break;
-            case TokenType::_NULL:
-                return Object();
-            case TokenType::TRUE: {
-                Object obj(true);
-                obj.m_type = Object::Type::BOOL;
-                return obj;
-            }
-            case TokenType::FALSE: {
-                Object obj(false);
-                obj.m_type = Object::Type::BOOL;
-                return obj;
-            }
-            default:
-                throw std::runtime_error("[Parser::ParseArray]: unknown value passed");
-            }
-
-
-    throw std::runtime_error("[Parser::ParseValue]: could not parse value");
-}
-
-Object Parser::ParseArray(unsigned& index)
-{
-    Object::array_t array;
-    index += 1; // skip '[' token
-    Token* LastToken = 0;
-    bool ExpectValue = true;
-    bool ExpectComma = false;
-
-    for(; index < tokens.size(); ++index)
-    {
-        Token& token = tokens[index];
-
-        if(token.type == TokenType::SQUARE_CLOSE && !LastTokenIsType(LastToken, TokenType::COMMA))
-            { ++index;break;}
-
-        if(ExpectValue)
-        {
-            array.push_back(ParseValue(token, index));
-            ExpectComma = true;
-            ExpectValue = false;
-            goto end;
-
-        }
-        if(ExpectComma && token.type != TokenType::COMMA && token.type != TokenType::SQUARE_CLOSE){
-            throw std::runtime_error(std::string("[Parser::ParseArray]: expected comma, got ") + TokenStrings[(int)token.type]);
-        }
-        else {
-            ExpectComma = false;
-            ExpectValue = true;
-        }
-        end:
-        LastToken = &token;
-        
-    }
-    --index;
-    //;
-    //printf("index when returning array: %d\n", index);
-    return Object(array);
-}
-
-Object Parser::ParseObject(unsigned& index)
-{
-    Object::dictionary_t obj;
-    index += 1;
-    bool Key = true;
-
-    bool ExpectKey = true;
-    bool ExpectColon = false;
-    bool ExpectValue = false;
-    bool ExpectComma = false;
-    std::string key, value;
-    Token* LastToken = 0;
-
-    for(;index < tokens.size(); ++index)
-    {
-        Token& token = tokens[index];
-        //printf("token.type: %d\n", token.type);
-        //printf("i: %d\ttoken.type: %d\tExpectKey: %d\tExpectColon: %d\tExpectValue: %d\tExpectComma: %d\n", index,token.type, ExpectKey, ExpectColon, ExpectValue, ExpectComma);
-
-        //if(token.type == TokenType::BRACKET_CLOSE){ ++index; break;};
-
-        if(token.type == TokenType::BRACKET_CLOSE && !LastTokenIsType(LastToken, TokenType::COMMA))
-            { ++index;break;}
-
-        if(ExpectKey){
-            if(token.type != TokenType::STRING)
-                throw std::runtime_error(std::string("[Parser::ParseObject]: expected key, got ") + TokenStrings[(int)token.type]);
-            key = token.value;
-            ExpectKey = false;
-            ExpectColon = true;
-
-            goto end;
-        }
-        if(ExpectColon){
-            if(token.type != TokenType::COLON)
-                throw std::runtime_error("[Parser::ParseObject]: expected colon");
-
-            ExpectColon = false;
-            ExpectValue = true;
-            //printf("Expecting value!\n");
-            goto end;
-        }
-        if(ExpectValue)
-        {
-            if(!IsValueType(token.type))
-                throw std::runtime_error("[Parser::ParseObject]: invalid value type");
-
-                //printf("type : %s\n", TokenStrings[(int)token.type].c_str());
-                obj[key] = ParseValue(token, index);
-                ExpectValue = false;
-                ExpectComma = true;
-                goto end;
-        }
-
-        if(ExpectComma && token.type != TokenType::COMMA && token.type != TokenType::BRACKET_CLOSE && token.type != TokenType::SQUARE_CLOSE){
-                    //printf("i: %d\ttoken.type: %d\tExpectKey: %d\tExpectColon: %d\tExpectValue: %d\tExpectComma: %d\n", index,token.type, ExpectKey, ExpectColon, ExpectValue, ExpectComma);
-                      //  printf("line: %d\toffset: %d\n", token.line, token.offset);
-                       // printf("token.type: %d\n", token.type);
-                        //printf("last->type: %d\n", LastToken->type);
-            throw std::runtime_error("[Parser::ParseObject]: expected comma");
-        }
-        else {
-            ExpectComma = false;
-            ExpectKey = true;
-        }
-
-        end:
-        LastToken = &token;
-
-    }
-    --index;
-    auto object = Object(obj);
-    object.m_type = Object::Type::OBJECT;
-    return object;
-}
-
-
-
-enum class State {
-    START = 0,
-    READ_ATTRIBUTE,
-    READ_ARRAY,
-
-    PARSER_DONE
-};
-
-
 
 Object Parser::Parse()
 {
-    Object obj;
+	Object value = ParseValue(context);
+	CheckWhitespace(context);
+	return value;
+}
 
-    State state = State::START;
-    bool bDone = false;
-    unsigned index = 0;
-    while(index < tokens.size())
-    {
-        Token& token = tokens[index];
+Object ParseNumber(ParserContext& ctx)
+{
+	size_t len = 0;
+	long double number = std::stold(&ctx.src[ctx.index], &len);
+	ctx.index += len;
+	return number;
+}
 
-        if(bDone){
-            throw std::runtime_error("[Parser::Parse]: extra data found");
-        }
+std::string ParseStr(ParserContext& ctx)
+{	
+	size_t i = ctx.index + 1;
 
-        if(token.type == TokenType::BRACKET_OPEN){
-            //++open;
-            obj = ParseObject(index);
-            bDone = true;
-        }
-        else if(token.type == TokenType::SQUARE_OPEN){
-            //++open;
-            obj = ParseArray(index);
-            bDone = true;
-        }
-        else if(token.type == TokenType::NUMBER)
-        {
-            obj = Object(std::stold(token.value));
-            bDone = true;
-        }
-        else if(token.type == TokenType::STRING)
-        {
-            obj = Object(token.value);
-            bDone = true;
-        }
-        if(bDone) break;
-        /*else if(token.type == TokenType::SQUARE_CLOSE){
-            --open;
-            if(open == 0) {state = State::PARSER_DONE; break;}
-        }
-        else if(token.type == TokenType::BRACKET_CLOSE){
-            --open;
-            if(open == 0){ state = State::PARSER_DONE; break;}
-        }*/
- 
-        ++index;
-    }
-    //assert(state == State::PARSER_DONE);
-    return obj;
+	while (ctx.src[i] != '"')
+	{
+		++i;
+	}
+
+	char const* ptr = ctx.src + ctx.index + 1;
+	size_t len = i - (ctx.index + 1);
+	ctx.index = i + 1;
+	return std::string(ptr, len);
+}
+
+Object::array_t ParseArray(ParserContext& ctx)
+{
+	Object::array_t array;
+	size_t startpos = ctx.index++;
+	size_t i = 1; // we skip opening bracket
+	bool expect_value = true;
+	bool expect_comma = false;
+	bool comma_last = false;
+	while (true)
+	{
+		char const& c = ctx.src[ctx.index];
+
+		if (isblank(c) || isspace(c)) {
+			++ctx.index;
+			continue;
+		}
+
+		if (c == ']')
+		{
+			if (comma_last)
+				throw std::runtime_error("[ParseArray]: expected value");
+			else {
+				++ctx.index;
+				break;
+			}
+		}
+
+		else if (c == ',')
+		{
+			expect_comma = false;
+			expect_value = true;
+			comma_last = true;
+			++ctx.index;
+			continue;
+		}
+
+		else if (expect_value)
+		{
+			array.push_back(ParseValue(ctx));
+			expect_comma = true;
+			expect_value = false;
+			
+		}
+		else
+		{
+			throw std::runtime_error("[ParseArray]: unexpected character");
+		}
+
+		comma_last = false;
+	}
+
+
+
+	return array;
+}
+
+Object::dictionary_t ParseDictionary(ParserContext& ctx)
+{
+	Object::dictionary_t dict;
+	++ctx.index;
+
+	bool expect_key = true;
+	bool expect_value = false;
+	bool expect_delimiter = false;
+	bool last_delimiter = false;
+	bool last_comma = false;
+	bool expect_comma = false;
+	std::string key;
+
+	while (true)
+	{
+		char const& c = ctx.src[ctx.index];
+
+		if (isblank(c) || isspace(c)) {
+			++ctx.index;
+			continue;
+		}
+
+		else if (c == '}')
+		{
+			if (last_delimiter || expect_delimiter || last_comma) {
+				throw std::runtime_error("[ParseDictionary]: expected value");
+			}
+			else {
+				++ctx.index;
+				break;
+			}
+		}
+		else if (expect_key)
+		{
+			key = ParseStr(ctx);
+			expect_delimiter = true;
+			expect_key = false;
+			expect_value = false;
+		}
+		else if (expect_value)
+		{
+			Object value = ParseValue(ctx);
+			expect_value = false;
+			expect_key = false;
+			expect_comma = true;
+			dict[key] = value;
+		}
+		else if (c == ',' && expect_comma)
+		{
+			expect_key = true;
+			expect_comma = false;
+			last_comma = true;
+			++ctx.index;
+			continue;
+		}
+
+		else if (c == ':' && expect_delimiter)
+		{
+			expect_value = true;
+			expect_delimiter = false;
+			last_delimiter = true;
+			++ctx.index;
+			continue;
+		}
+		else {
+			throw std::runtime_error("[ParseDictionary]: unexpected character");
+
+		}
+		last_delimiter = false;
+		last_comma = false;
+	}
+
+	return dict;
+}
+
+Object ParseValue(ParserContext& ctx)
+{
+	char c = ctx.src[ctx.index];
+	while (isspace(c) || isblank(c))
+	{
+		c = ctx.src[++ctx.index];
+	}
+
+	switch (c)
+	{
+	case '"':
+		// str
+		return ParseStr(ctx);
+		break;
+	case '{':
+		return ParseDictionary(ctx);
+		break;
+	case '[':
+		return ParseArray(ctx);
+		break;
+	default:
+	{
+		if (isalnum(c))
+		{
+			return ParseNumber(ctx);
+		}
+		throw std::runtime_error("[ParseValue]: invalid value at index " + std::to_string(ctx.index));
+	}
+	}
 }

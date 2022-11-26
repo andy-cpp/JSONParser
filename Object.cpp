@@ -22,6 +22,7 @@ void Object::Set(Object const& value)
     *this = value;
 }
 
+
 void Object::Set(std::string const& key, Object const& value)
 {
     this->ToDictionary().insert({key, value});
@@ -46,11 +47,9 @@ std::string ArrayToString(Object::array_t const& array, unsigned level = 0, bool
     for(unsigned index = 0; index < array.size(); ++index)
     {
         Object const& obj = array[index];
-        //if(index == array.size() - 1) // last iteration
         buffer += string_format("%s%s%c\n", std::string((level + 1) * 4, ' ').c_str(), ObjectToString(obj, level + 1, true).c_str(), (index == array.size() - 1) ? ' ' : ',');
 
     }
-    printf("level: %d\n", level);
     buffer += std::string(level * 4, ' ') + "]";
     return buffer;
 }

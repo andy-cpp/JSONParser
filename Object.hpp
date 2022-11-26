@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <assert.h>
-#include <map>
+#include <unordered_map>
 #include <vector>
 /*
     JSON Object wrapper
@@ -27,13 +27,16 @@ copy_t CreateCopy()
 }
 class Object;
 
+/*
+    An idea for optimization might be to store boolean values AS a pointer, without allocating heap memory for it
+*/
 
 class Object
 {
 
 
 public:
-    typedef std::map<std::string, Object> dictionary_t;
+    typedef std::unordered_map<std::string, Object> dictionary_t;
     typedef std::vector<Object> array_t;
 
     enum class Type {
@@ -89,11 +92,19 @@ public:
         m_buffer = new std::string(str);
     }
 
-    Object(long double integer)
+    template <typename T,  std::enable_if<std::is_integral<T>::value>>
+    Object(T integer)
     {
         Init<long double>();
         m_type = Type::NUMBER;
-        m_buffer = new long double(integer);
+        m_buffer = new long double((long double)integer);
+    }
+
+    Object(long double number)
+    {
+        Init<long double>();
+        m_type = Type::NUMBER;
+        m_buffer = new long double(number);
     }
 
     Object(array_t const& array)

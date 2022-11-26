@@ -1,31 +1,21 @@
 #pragma once
-
-#include "lexer.hpp"
 #include "Object.hpp"
+
+
+struct ParserContext {
+	char const* src = 0; // source json string
+	size_t length = 0;
+	size_t index = 0; // current position of parser relative to src
+	
+};
 
 class Parser
 {
 public:
-    Parser(std::string const& src) : m_src(src){tokens = Lexer(src).Lex();};
+	Parser(char const* src);
 
-    ~Parser() = default;
-
-    Object Parse();
-
-    void ReadAttribute(unsigned& index);
+	Object Parse();
 
 private:
-    Object ParseArray(unsigned& index);
-
-    Object ParseObject(unsigned& index);
-
-    Object ParseValue(Token& token, unsigned& index);
-
-private:
-
-
-public:
-    tokens_t tokens;
-
-    std::string m_src;
+	ParserContext context;
 };

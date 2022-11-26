@@ -12,7 +12,7 @@ std::string ReadFile(std::string const& filename)
 
 Object JSON::Parse(std::string const& source)
 {
-    return Parser(source).Parse();
+    return Parser(source.c_str()).Parse();
 }
 
 Object JSON::LoadFromFile(std::string const& filename)

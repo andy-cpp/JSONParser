@@ -2,3 +2,6 @@
 *.o
 *.sh
 .gitignore
+/.vs
+/out/build/x64-Debug
+*.json
